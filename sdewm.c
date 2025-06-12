@@ -3,8 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <intdef.h>
+#include <evec.h>
 
 static bool wm_detecetd = false;
+evec_t client_frame_map;
+
+typedef struct _client_frame_pair
+{
+    Window window;
+    Window frame;
+} client_frame_pair_t;
 
 int wm_error_handler(Display* dpy, XErrorEvent* ev)
 {
@@ -35,6 +43,7 @@ int main(void)
         return EXIT_FAILURE;
     }
     printf("sdewm: running\n");
+    client_frame_map = evec__new(sizeof(client_frame_pair_t));
     XEvent ev;
     bool moving = false;
     Window moving_window = None;
@@ -50,10 +59,37 @@ int main(void)
         {
             case MapRequest:
             {
-                XMapWindow(display, ev.xmaprequest.window);
-                XSetInputFocus(display, ev.xmaprequest.window, RevertToPointerRoot, CurrentTime);
-                XSelectInput(display, ev.xmaprequest.window, ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
-                break;
+                    Window client = ev.xmaprequest.window;
+                    // Create a frame window slightly bigger than the client
+                    XWindowAttributes attr;
+                    XGetWindowAttributes(display, client, &attr);
+
+                    int border = 8;
+                    int titlebar_height = 0;
+
+                    Window frame = XCreateSimpleWindow(display, root,
+                        attr.x, attr.y,
+                        attr.width + border * 2,
+                        attr.height + titlebar_height + border * 2,
+                        border,
+                        BlackPixel(display, DefaultScreen(display)),
+                        WhitePixel(display, DefaultScreen(display))
+                    );
+                    // Reparent client into frame
+                    XAddToSaveSet(display, client);
+                    XReparentWindow(display, client, frame, border, border + titlebar_height);
+
+                    // Select input on the frame for future events
+                    XSelectInput(display, frame,
+                        SubstructureRedirectMask | SubstructureNotifyMask |
+                        ButtonPressMask | ButtonReleaseMask | PointerMotionMask
+                    );
+
+                    // Map the frame and the client
+                    XMapWindow(display, client);
+                    XMapWindow(display, frame);
+
+                    break;
             }
             case ButtonPress:
             {
