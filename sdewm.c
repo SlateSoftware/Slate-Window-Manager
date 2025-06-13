@@ -3,46 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <intdef.h>
-#include <evec.h>
+#include "client.h"
 
 static bool wm_detecetd = false;
-evec_t client_frame_map;
-
-typedef struct _client_frame_pair
-{
-    Window window;
-    Window frame;
-} client_frame_pair_t;
-
-void forget_client(Window client)
-{
-    for (u8 i = 0; i < client_frame_map.size; ++i)
-    {
-        if (((client_frame_pair_t*)evec__at(&client_frame_map, i))->window == client)
-            memset(((client_frame_pair_t*)evec__at(&client_frame_map, i)), 0, sizeof(client_frame_pair_t));
-        
-    }
-    return;
-}
-
-void store_client_frame_pair(Window client, Window frame)
-{
-    client_frame_pair_t pair = {
-        .window = client,
-        .frame = frame
-    };
-    evec__push(&client_frame_map, &pair);
-}
-
-Window retrieve_frame_from_client(Window client)
-{
-    for (u8 i = 0; i < client_frame_map.size; ++i)
-    {
-        if (((client_frame_pair_t*)evec__at(&client_frame_map, i))->window == client)
-            return ((client_frame_pair_t*)evec__at(&client_frame_map, i))->frame;
-    }
-    return None;
-}
 
 int wm_error_handler(Display* dpy, XErrorEvent* ev)
 {
@@ -73,11 +36,9 @@ int main(void)
         return EXIT_FAILURE;
     }
     printf("sdewm: running\n");
-    client_frame_map = evec__new(sizeof(client_frame_pair_t));
+    client__initialize_map();
     XEvent ev;
-    bool moving = false;
-    Window moving_window = None;
-    Window frame = None;
+    client_t* moving_window = NULL;
     int win_x = 0;
     int win_y = 0;
     int win_start_x = 0;
@@ -94,66 +55,42 @@ int main(void)
         {
             case MapRequest:
             {
-                    Window client = ev.xmaprequest.window;
-                    XWindowAttributes attr;
-                    XGetWindowAttributes(display, client, &attr);
-
-                    int border = 8;
-                    int titlebar_height = 0;
-
-                    Window frame = XCreateSimpleWindow(display, root,
-                        attr.x, attr.y,
-                        attr.width + border * 2,
-                        attr.height + titlebar_height + border * 2,
-                        border,
-                        BlackPixel(display, DefaultScreen(display)),
-                        WhitePixel(display, DefaultScreen(display))
-                    );
-                    store_client_frame_pair(client, frame);
-                    XAddToSaveSet(display, client);
-                    XReparentWindow(display, client, frame, border, border + titlebar_height);
-                    XSelectInput(display, frame,
-                        SubstructureRedirectMask | SubstructureNotifyMask |
-                        ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask
-                    );
-
-                    XMapWindow(display, client);
-                    XMapWindow(display, frame);
-
-                    break;
+                client__create(ev.xmaprequest.window, display, root);
+                break;
             }
             case ButtonPress:
             {
-                if (ev.xbutton.subwindow != None && ev.xbutton.button == Button1 /*&& (ev.xbutton.state & Mod1Mask)*/)
+                if (ev.xbutton.window != None && ev.xbutton.subwindow == None && ev.xbutton.button == Button1 /*&& (ev.xbutton.state & Mod1Mask)*/)
                 {
-                    moving = true;
-                    moving_window = ev.xbutton.subwindow;
-                    frame = retrieve_frame_from_client(moving_window);
-                    if (frame != None)
+                    moving_window = client__retrieve_from(ev.xbutton.window, true);
+                    if (moving_window != NULL)
                     {
+                        printf("win: %ld, frame: %ld\nevw: %ld, evsw: %ld, root: %ld\n", moving_window->client, moving_window->frame, ev.xbutton.window, ev.xbutton.subwindow, ev.xbutton.root);
+                        
                         XWindowAttributes attr;
-                        XGetWindowAttributes(display, moving_window, &attr);
+                        XGetWindowAttributes(display, moving_window->client, &attr);
                         win_x = attr.x;
                         win_y = attr.y;
                         win_start_x = ev.xbutton.x_root;
                         win_start_y = ev.xbutton.y_root;
-                        XGetWindowAttributes(display, frame, &attr);
+                        XGetWindowAttributes(display, moving_window->frame, &attr);
                         frame_x = attr.x;
                         frame_y = attr.y;
                         frame_start_x = ev.xbutton.x_root;
                         frame_start_y = ev.xbutton.y_root;
+                        moving_window->moving = 1;
                     }
                 }
                 break;
             }
             case MotionNotify:
             {
-                if (moving && moving_window != None)
+                if (moving_window != NULL && moving_window->moving)
                 {
-                    XMoveWindow(display, moving_window, win_x, win_y);
+                    XMoveWindow(display, moving_window->client, win_x, win_y);
                     int dx = ev.xmotion.x_root - frame_start_x;
                     int dy = ev.xmotion.y_root - frame_start_y;
-                    XMoveWindow(display, frame, frame_x + dx, frame_y + dy);
+                    XMoveWindow(display, moving_window->frame, frame_x + dx, frame_y + dy);
                 }
                 break;
             }
@@ -161,20 +98,19 @@ int main(void)
             case DestroyNotify:
             {
                 Window client = ev.xunmap.window;
-                if (retrieve_frame_from_client(client)) 
+                if (client__retrieve_from(client, true)->frame) 
                 {
-                    XDestroyWindow(display, retrieve_frame_from_client(client));
-                    forget_client(client); 
+                    XDestroyWindow(display, client__retrieve_from(client, true)->frame);
+                    client__forget(client); 
                 }
                 break;
             }
             case ButtonRelease:
             {
-                if (moving && ev.xbutton.button == Button1)
+                if (moving_window && moving_window->moving && ev.xbutton.button == Button1)
                 {
-                    moving = false;
-                    moving_window = None;
-                    frame = None;
+                    moving_window->moving = false;
+                    moving_window = NULL;
                 }
                 break;
             }
@@ -183,7 +119,7 @@ int main(void)
                 break;
         }
     }
-    evec__free(&client_frame_map);
+    client__free_map();
     XCloseDisplay(display);
     return 0;
 }

@@ -2,7 +2,7 @@
 /* made by <franzageek> on the go */
 
 #ifndef __EVEC_H__
-#define __EVEC_H__ 1
+#define __EVEC_H__
 
 #include <intdef.h>
 #include <stdlib.h>
