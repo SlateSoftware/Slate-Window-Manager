@@ -14,6 +14,36 @@ typedef struct _client_frame_pair
     Window frame;
 } client_frame_pair_t;
 
+void forget_client(Window client)
+{
+    for (u8 i = 0; i < client_frame_map.size; ++i)
+    {
+        if (((client_frame_pair_t*)evec__at(&client_frame_map, i))->window == client)
+            memset(((client_frame_pair_t*)evec__at(&client_frame_map, i)), 0, sizeof(client_frame_pair_t));
+        
+    }
+    return;
+}
+
+void store_client_frame_pair(Window client, Window frame)
+{
+    client_frame_pair_t pair = {
+        .window = client,
+        .frame = frame
+    };
+    evec__push(&client_frame_map, &pair);
+}
+
+Window retrieve_frame_from_client(Window client)
+{
+    for (u8 i = 0; i < client_frame_map.size; ++i)
+    {
+        if (((client_frame_pair_t*)evec__at(&client_frame_map, i))->window == client)
+            return ((client_frame_pair_t*)evec__at(&client_frame_map, i))->frame;
+    }
+    return None;
+}
+
 int wm_error_handler(Display* dpy, XErrorEvent* ev)
 {
     if (ev->error_code == BadAccess)
@@ -47,10 +77,15 @@ int main(void)
     XEvent ev;
     bool moving = false;
     Window moving_window = None;
+    Window frame = None;
     int win_x = 0;
     int win_y = 0;
-    int start_x = 0;
-    int start_y = 0;
+    int win_start_x = 0;
+    int win_start_y = 0;
+    int frame_x = 0;
+    int frame_y = 0;
+    int frame_start_x = 0;
+    int frame_start_y = 0;
 
     while (true)
     {
@@ -60,7 +95,6 @@ int main(void)
             case MapRequest:
             {
                     Window client = ev.xmaprequest.window;
-                    // Create a frame window slightly bigger than the client
                     XWindowAttributes attr;
                     XGetWindowAttributes(display, client, &attr);
 
@@ -75,17 +109,14 @@ int main(void)
                         BlackPixel(display, DefaultScreen(display)),
                         WhitePixel(display, DefaultScreen(display))
                     );
-                    // Reparent client into frame
+                    store_client_frame_pair(client, frame);
                     XAddToSaveSet(display, client);
                     XReparentWindow(display, client, frame, border, border + titlebar_height);
-
-                    // Select input on the frame for future events
                     XSelectInput(display, frame,
                         SubstructureRedirectMask | SubstructureNotifyMask |
-                        ButtonPressMask | ButtonReleaseMask | PointerMotionMask
+                        ButtonPressMask | ButtonReleaseMask | PointerMotionMask | StructureNotifyMask
                     );
 
-                    // Map the frame and the client
                     XMapWindow(display, client);
                     XMapWindow(display, frame);
 
@@ -93,16 +124,25 @@ int main(void)
             }
             case ButtonPress:
             {
-                if (ev.xbutton.subwindow != None && ev.xbutton.button == Button1 && (ev.xbutton.state & Mod1Mask))
+                if (ev.xbutton.subwindow != None && ev.xbutton.button == Button1 /*&& (ev.xbutton.state & Mod1Mask)*/)
                 {
                     moving = true;
                     moving_window = ev.xbutton.subwindow;
-                    XWindowAttributes attr;
-                    XGetWindowAttributes(display, moving_window, &attr);
-                    win_x = attr.x;
-                    win_y = attr.y;
-                    start_x = ev.xbutton.x_root;
-                    start_y = ev.xbutton.y_root;
+                    frame = retrieve_frame_from_client(moving_window);
+                    if (frame != None)
+                    {
+                        XWindowAttributes attr;
+                        XGetWindowAttributes(display, moving_window, &attr);
+                        win_x = attr.x;
+                        win_y = attr.y;
+                        win_start_x = ev.xbutton.x_root;
+                        win_start_y = ev.xbutton.y_root;
+                        XGetWindowAttributes(display, frame, &attr);
+                        frame_x = attr.x;
+                        frame_y = attr.y;
+                        frame_start_x = ev.xbutton.x_root;
+                        frame_start_y = ev.xbutton.y_root;
+                    }
                 }
                 break;
             }
@@ -110,9 +150,21 @@ int main(void)
             {
                 if (moving && moving_window != None)
                 {
-                    int dx = ev.xmotion.x_root - start_x;
-                    int dy = ev.xmotion.y_root - start_y;
-                    XMoveWindow(display, moving_window, win_x + dx, win_y + dy);
+                    XMoveWindow(display, moving_window, win_x, win_y);
+                    int dx = ev.xmotion.x_root - frame_start_x;
+                    int dy = ev.xmotion.y_root - frame_start_y;
+                    XMoveWindow(display, frame, frame_x + dx, frame_y + dy);
+                }
+                break;
+            }
+            case UnmapNotify:
+            case DestroyNotify:
+            {
+                Window client = ev.xunmap.window;
+                if (retrieve_frame_from_client(client)) 
+                {
+                    XDestroyWindow(display, retrieve_frame_from_client(client));
+                    forget_client(client); 
                 }
                 break;
             }
@@ -122,6 +174,7 @@ int main(void)
                 {
                     moving = false;
                     moving_window = None;
+                    frame = None;
                 }
                 break;
             }
@@ -130,6 +183,7 @@ int main(void)
                 break;
         }
     }
+    evec__free(&client_frame_map);
     XCloseDisplay(display);
     return 0;
 }
