@@ -41,12 +41,8 @@ int main(void)
     client_t* moving_window = NULL;
     int win_x = 0;
     int win_y = 0;
-    int win_start_x = 0;
-    int win_start_y = 0;
     int frame_x = 0;
     int frame_y = 0;
-    int frame_start_x = 0;
-    int frame_start_y = 0;
 
     while (true)
     {
@@ -71,15 +67,21 @@ int main(void)
                         XGetWindowAttributes(display, moving_window->client, &attr);
                         win_x = attr.x;
                         win_y = attr.y;
-                        win_start_x = ev.xbutton.x_root;
-                        win_start_y = ev.xbutton.y_root;
                         XGetWindowAttributes(display, moving_window->frame, &attr);
                         frame_x = attr.x;
                         frame_y = attr.y;
-                        frame_start_x = ev.xbutton.x_root;
-                        frame_start_y = ev.xbutton.y_root;
+                        moving_window->drag_x = ev.xbutton.x_root;
+                        moving_window->drag_y = ev.xbutton.y_root;
                         moving_window->moving = 1;
                     }
+                }
+                break;
+            }
+            case Expose:
+            {
+                if (client__retrieve_from(ev.xexpose.window, false))
+                {
+                    client__draw_decor(client__retrieve_from(ev.xexpose.window, false)->frame, display);
                 }
                 break;
             }
@@ -88,8 +90,8 @@ int main(void)
                 if (moving_window != NULL && moving_window->moving)
                 {
                     XMoveWindow(display, moving_window->client, win_x, win_y);
-                    int dx = ev.xmotion.x_root - frame_start_x;
-                    int dy = ev.xmotion.y_root - frame_start_y;
+                    int dx = ev.xmotion.x_root - moving_window->drag_x;
+                    int dy = ev.xmotion.y_root - moving_window->drag_y;
                     XMoveWindow(display, moving_window->frame, frame_x + dx, frame_y + dy);
                 }
                 break;
@@ -110,6 +112,8 @@ int main(void)
                 if (moving_window && moving_window->moving && ev.xbutton.button == Button1)
                 {
                     moving_window->moving = false;
+                    moving_window->drag_x = 0;
+                    moving_window->drag_y = 0;
                     moving_window = NULL;
                 }
                 break;
@@ -118,6 +122,7 @@ int main(void)
             default:
                 break;
         }
+        client__redraw_all_decorations(display);
     }
     client__free_map();
     XCloseDisplay(display);

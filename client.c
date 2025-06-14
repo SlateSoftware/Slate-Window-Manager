@@ -45,7 +45,7 @@ void client__store(Window window, Window frame)
         .drag_y = 0
     };
     evec__push(&client_frame_map, &client);
-    return;
+    return /*(client_t*)evec__at(&client_frame_map, client_frame_map.size-1)*/;
 }
 
 client_t* client__retrieve_from(Window window, bool frame)
@@ -87,10 +87,32 @@ void client__create(Window window, Display* dpy, Window root)
     XSelectInput(dpy, frame,
         SubstructureRedirectMask | SubstructureNotifyMask |
         ButtonPressMask | ButtonReleaseMask | 
-        PointerMotionMask | StructureNotifyMask
+        PointerMotionMask | StructureNotifyMask | ExposureMask
     );
 
     XMapWindow(dpy, window);
     XMapWindow(dpy, frame);
+    return;
+}
+
+void client__redraw_all_decorations(Display* dpy)
+{
+    for (u16 i = 0; i < client_frame_map.size; ++i)
+    {
+        if (evec__at(&client_frame_map, i))
+            client__draw_decor(((client_t*) evec__at(&client_frame_map, i))->frame, dpy);
+    }
+}
+
+void client__draw_decor(Window frame, Display* dpy)
+{
+    GC gc = XCreateGC(dpy, frame, 0, NULL);
+    XSetForeground(dpy, gc, 0x888888);
+    XFillRectangle(dpy, frame, gc, 0, 0, 800, TITLEBAR_HEIGHT);
+
+    XSetForeground(dpy, gc, 0xFF0000);
+    XFillRectangle(dpy, frame, gc, 2, 2, CLOSE_WIDTH, TITLEBAR_HEIGHT - 4);
+
+    XFreeGC(dpy, gc);
     return;
 }

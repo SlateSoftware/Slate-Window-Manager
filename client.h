@@ -18,6 +18,8 @@ void client__free_map(void);
 void client__forget(Window client);
 void client__store(Window window, Window frame);
 client_t* client__retrieve_from(Window window, bool frame);
+void client__draw_decor(Window frame, Display* dpy);
+void client__redraw_all_decorations(Display* dpy);
 void client__create(Window window, Display* dpy, Window root);
 
 #endif
