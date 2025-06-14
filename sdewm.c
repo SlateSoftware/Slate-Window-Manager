@@ -98,9 +98,9 @@ int main(void)
             case DestroyNotify:
             {
                 Window client = ev.xunmap.window;
-                if (client__retrieve_from(client, true)->frame) 
+                if (client__retrieve_from(client, false)) 
                 {
-                    XDestroyWindow(display, client__retrieve_from(client, true)->frame);
+                    XDestroyWindow(display, client__retrieve_from(client, false)->frame);
                     client__forget(client); 
                 }
                 break;
