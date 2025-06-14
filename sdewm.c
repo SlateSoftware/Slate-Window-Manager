@@ -61,27 +61,22 @@ int main(void)
                     moving_window = client__retrieve_from(ev.xbutton.window, true);
                     if (moving_window != NULL)
                     {
-                        printf("win: %ld, frame: %ld\nevw: %ld, evsw: %ld, root: %ld\n", moving_window->client, moving_window->frame, ev.xbutton.window, ev.xbutton.subwindow, ev.xbutton.root);
-                        
-                        XWindowAttributes attr;
-                        XGetWindowAttributes(display, moving_window->client, &attr);
-                        win_x = attr.x;
-                        win_y = attr.y;
-                        XGetWindowAttributes(display, moving_window->frame, &attr);
-                        frame_x = attr.x;
-                        frame_y = attr.y;
-                        moving_window->drag_x = ev.xbutton.x_root;
-                        moving_window->drag_y = ev.xbutton.y_root;
-                        moving_window->moving = 1;
+                        if (!client__can_close(&ev, moving_window, display))
+                        {
+                            printf("win: %ld, frame: %ld\nevw: %ld, evsw: %ld, root: %ld\n", moving_window->client, moving_window->frame, ev.xbutton.window, ev.xbutton.subwindow, ev.xbutton.root);
+                            
+                            XWindowAttributes attr;
+                            XGetWindowAttributes(display, moving_window->client, &attr);
+                            win_x = attr.x;
+                            win_y = attr.y;
+                            XGetWindowAttributes(display, moving_window->frame, &attr);
+                            frame_x = attr.x;
+                            frame_y = attr.y;
+                            moving_window->drag_x = ev.xbutton.x_root;
+                            moving_window->drag_y = ev.xbutton.y_root;
+                            moving_window->moving = 1;
+                        }
                     }
-                }
-                break;
-            }
-            case Expose:
-            {
-                if (client__retrieve_from(ev.xexpose.window, false))
-                {
-                    client__draw_decor(client__retrieve_from(ev.xexpose.window, false)->frame, display);
                 }
                 break;
             }
@@ -115,6 +110,14 @@ int main(void)
                     moving_window->drag_x = 0;
                     moving_window->drag_y = 0;
                     moving_window = NULL;
+                }
+                else
+                {
+                    if (ev.xbutton.subwindow == None)
+                    {
+                        client_t* client = client__retrieve_from(ev.xbutton.window, true);
+                        client__can_close(&ev, client, display);
+                    }
                 }
                 break;
             }
