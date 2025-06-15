@@ -24,19 +24,11 @@ void client__free_map(void)
     return;
 }
 
-void client__forget(Window client)
+void client__forget(client_t* client)
 {
-    for (u8 i = 0; i < client_frame_map.size; ++i)
-    {
-        if (((client_t*)evec__at(&client_frame_map, i))->client == client)
-        {
-            client_t* _client = ((client_t*)evec__at(&client_frame_map, i));
-            free(_client->name);
-            cairo_destroy(_client->cr);
-            cairo_surface_destroy(_client->surface);
-            memset(_client, 0, sizeof(client_t));
-        }
-    }
+    cairo_destroy(client->cr);
+    cairo_surface_destroy(client->surface);
+    memset(client, 0, sizeof(client_t));
     return;
 }
 
@@ -48,7 +40,6 @@ void client__store(client_t* client)
         .moving = 0,
         .drag_x = 0,
         .drag_y = 0,
-        .name = client->name,
         .surface = client->surface,
         .cr = client->cr
     };
@@ -80,6 +71,11 @@ Visual* get_argb_visual(Display* dpy)
     vinfo_template.screen = DefaultScreen(dpy);
     int nitems;
     XVisualInfo* info = XGetVisualInfo(dpy, VisualScreenMask, &vinfo_template, &nitems);
+    if (!XMatchVisualInfo(dpy, DefaultScreen(dpy), 32, TrueColor, info)) 
+    {
+        fprintf(stderr, "error: no ARGB visual found\n");
+        exit(1);
+    }
     for (int i = 0; i < nitems; ++i)
     {
         XRenderPictFormat* pict = XRenderFindVisualFormat(dpy, info[i].visual);
@@ -121,49 +117,19 @@ void client__create(Window window, Display* dpy, Window root)
         depth,
         InputOutput,
         visual,
-        CWColormap | CWBackPixel | CWBorderPixel | CWOverrideRedirect,
+        CWColormap | CWBackPixel | CWBorderPixel,
         &sattr
     );
     
-    /*Window frame = XCreateSimpleWindow(dpy, root,
-        attr.x - CORNER_RADIUS, 
-        attr.y - CORNER_RADIUS,
-        attr.width + CORNER_RADIUS,
-        attr.height + CORNER_RADIUS,
-        BORDER_WIDTH,
-        /*BlackPixel(dpy, DefaultScreen(dpy))*
-        /*WhitePixel(dpy, DefaultScreen(dpy))*
-        None,
-        None
-    );*/
-    XTextProperty prop;
-    char* name = NULL;
-    int count = 0;
-    char** list = NULL;
-    if (XGetWMName(dpy, window, &prop) && prop.value)
-    {
-        if (prop.encoding == XA_STRING)
-            name = strdup((char *)prop.value);
-        
-        else if (XmbTextPropertyToTextList(dpy, &prop, &list, &count) >= Success && count > 0)
-        {
-            name = strdup(list[0]);
-            XFreeStringList(list);
-            list = NULL;
-        }
-
-        XFree(prop.value);
-    }
-
     XAddToSaveSet(dpy, window);
-    XReparentWindow(dpy, window, frame, BORDER_WIDTH, BORDER_WIDTH + TITLEBAR_HEIGHT);
     XSelectInput(dpy, frame,
         SubstructureRedirectMask | SubstructureNotifyMask |
         ButtonPressMask | ButtonReleaseMask | 
         PointerMotionMask | StructureNotifyMask | 
         ExposureMask
     );
-
+    
+    XReparentWindow(dpy, window, frame, CORNER_RADIUS, CORNER_RADIUS + TITLEBAR_HEIGHT);
     XMapWindow(dpy, window);
     XMapWindow(dpy, frame);
 
@@ -171,8 +137,8 @@ void client__create(Window window, Display* dpy, Window root)
         dpy, 
         frame, 
         visual, 
-        attr.width + BORDER_WIDTH * 2, 
-        attr.width + BORDER_WIDTH * 2
+        attr.width + CORNER_RADIUS * 2,
+        attr.height + CORNER_RADIUS * 2 + TITLEBAR_HEIGHT
     );
 
     cairo_t* cr = cairo_create(surface);
@@ -180,14 +146,12 @@ void client__create(Window window, Display* dpy, Window root)
     client_t client = {
         .client = window,
         .frame = frame,
-        .name = name,
         .surface = surface,
         .cr = cr
     };
 
-
     client__store(&client);
-    name = NULL;
+    window__draw_decorations(&client, dpy);
     return;
 }
 
@@ -195,11 +159,17 @@ void client__redraw_all_decorations(Display* dpy)
 {
     for (u16 i = 0; i < client_frame_map.size; ++i)
     {
-        if (evec__at(&client_frame_map, i))
+        if (evec__at(&client_frame_map, i) && ((client_t*) evec__at(&client_frame_map, i))->frame)
+        {
+            XClearArea(dpy, ((client_t*) evec__at(&client_frame_map, i))->frame, 0, 0, 0, 0, True);
+            XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->frame);
+            XClearArea(dpy, ((client_t*) evec__at(&client_frame_map, i))->client, 0, 0, 0, 0, True);
+            XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->client);
             window__draw_decorations(
                 ((client_t*) evec__at(&client_frame_map, i)), 
                 dpy
             );
+        }
     }
 }
 
@@ -213,8 +183,8 @@ bool client__can_close(XEvent* ev, client_t* client, Display* dpy)
     int w = attr.width;
 
     if (click_y < TITLEBAR_HEIGHT && click_x <= TITLEBAR_HEIGHT)
-    {
-        Atom *protocols;
+    { 
+        Atom* protocols;
         int n;
         Atom wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
         Atom wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -233,7 +203,7 @@ bool client__can_close(XEvent* ev, client_t* client, Display* dpy)
                     msg.xclient.format = 32;
                     msg.xclient.data.l[0] = wm_delete;
                     msg.xclient.data.l[1] = CurrentTime;
-
+                    logf("Closing client");
                     XSendEvent(dpy, client->client, False, NoEventMask, &msg);
                     XFree(protocols);
                     return true;

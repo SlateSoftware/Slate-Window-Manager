@@ -14,12 +14,11 @@ typedef struct _client
     u32 drag_y;
     cairo_surface_t* surface;
     cairo_t* cr;
-    char* name;
 } client_t;
 
 void client__initialize_map(void);
 void client__free_map(void);
-void client__forget(Window client);
+void client__forget(client_t* client);
 void client__store(client_t* client);
 client_t* client__retrieve_from(Window window, bool frame);
 void client__redraw_all_decorations(Display* dpy);

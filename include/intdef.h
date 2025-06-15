@@ -20,4 +20,10 @@ typedef int64_t i64;
     #define false 0
 #endif
 
+#ifdef DEBUG
+    #define logf(fmt, ...) fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+    #define logf(fmt, ...)
+#endif
+
 #endif
