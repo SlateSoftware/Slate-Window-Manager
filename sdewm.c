@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <intdef.h>
+#include "core.h"
 #include "client.h"
 
 static bool wm_detecetd = false;
@@ -40,6 +41,12 @@ int main(void)
         return EXIT_FAILURE;
     }
     printf("sdewm: running\n");
+    if (!core__init_log_stream())
+    {
+        fprintf(stderr, "error: could not initialize log file, quitting\n");
+        XCloseDisplay(display);
+        exit(EXIT_FAILURE);
+    }
 
     client__initialize_map();
     XEvent ev;
@@ -62,6 +69,7 @@ int main(void)
             case Expose:
             {
                 logf("Got Expose event");
+                client__redraw_all_decorations(display);
                 client_t* client = client__retrieve_from(ev.xexpose.window, false);
                 if (client)
                 {
@@ -192,6 +200,8 @@ int main(void)
     end:
     printf("quitting sdewm...");
     client__free_map();
+    logf("Quitting SDEWM");
+    core__close_log_stream();
     XCloseDisplay(display);
     printf("done\n");
     return 0;

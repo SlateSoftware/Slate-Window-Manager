@@ -4,6 +4,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <stdlib.h>
+#include "core.h"
 #include "window.h"
 #include "client.h"
 
@@ -15,7 +16,7 @@ void window__draw_decorations(client_t* c, Display* dpy)
     int h = attr.height;
     cairo_save(c->cr);
     cairo_set_operator(c->cr, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(c->cr, 0, 0, 0, 0); // fully transparent background
+    cairo_set_source_rgba(c->cr, 0, 0, 0, 0);
     cairo_paint(c->cr);
 
     cairo_set_source_rgba(c->cr, 1,1,1,0.7);
@@ -27,22 +28,30 @@ void window__draw_decorations(client_t* c, Display* dpy)
     cairo_close_path(c->cr);
     cairo_fill(c->cr);
 
-    // Draw semi-transparent black border
     /*cairo_set_source_rgba(c->cr, 0, 0, 0, 0.7);
     cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT, w, h);
     cairo_set_line_width(c->cr, CORNER_RADIUS);
     cairo_stroke(c->cr);
 
-    // Draw title bar background
     cairo_rectangle(c->cr, 0, 0, w, TITLEBAR_HEIGHT);
     cairo_set_source_rgba(c->cr, 0.1, 0.1, 0.3, 0.8);
-    cairo_fill(c->cr);
+    cairo_fill(c->cr);*/
 
-    // Draw window title text*/
     cairo_set_source_rgb(c->cr, 1, 1, 1);
-    cairo_select_font_face(c->cr, "@cairo:", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_select_font_face(c->cr, "DM Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_status_t status = cairo_status(c->cr);
+    if (status != CAIRO_STATUS_SUCCESS)
+    {
+        logf("[ERROR] Cairo error %d: %s", status, cairo_status_to_string(status));
+    }
+
     cairo_set_font_size(c->cr, 14);
     cairo_move_to(c->cr, BORDER_WIDTH + 5, TITLEBAR_HEIGHT - 5);
+    status = cairo_status(c->cr);
+    if (status != CAIRO_STATUS_SUCCESS)
+    {
+        logf("[ERROR] Cairo error %d: %s", status, cairo_status_to_string(status));
+    }
 
     XTextProperty prop;
     char* name = strdup("No title");
@@ -68,8 +77,13 @@ void window__draw_decorations(client_t* c, Display* dpy)
     }
     
     cairo_show_text(c->cr, name);
+    status = cairo_status(c->cr);
+    if (status != CAIRO_STATUS_SUCCESS)
+    {
+        logf("[ERROR] Cairo error %d: %s", status, cairo_status_to_string(status));
+    }
+
     free(name);
-    // Draw close button (red square)
     cairo_rectangle(c->cr, w - CLOSE_WIDTH, 5, 16, 16);
     cairo_set_source_rgba(c->cr, 0.8, 0, 0, 1);
     cairo_fill(c->cr);

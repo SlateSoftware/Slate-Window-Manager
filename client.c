@@ -9,6 +9,7 @@
 #include <string.h>
 #include "client.h"
 #include "window.h"
+#include "core.h"
 
 evec_t client_frame_map;
 
@@ -152,7 +153,7 @@ void client__create(Window window, Display* dpy, Window root)
     };
 
     client__store(&client);
-    window__draw_decorations(&client, dpy);
+    client__redraw_all_decorations(dpy);
     return;
 }
 
@@ -162,10 +163,10 @@ void client__redraw_all_decorations(Display* dpy)
     {
         if (evec__at(&client_frame_map, i) && ((client_t*) evec__at(&client_frame_map, i))->frame)
         {
-            XClearArea(dpy, ((client_t*) evec__at(&client_frame_map, i))->frame, 0, 0, 0, 0, True);
+            /*XClearArea(dpy, ((client_t*) evec__at(&client_frame_map, i))->frame, 0, 0, 0, 0, True);
             XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->frame);
             XClearArea(dpy, ((client_t*) evec__at(&client_frame_map, i))->client, 0, 0, 0, 0, True);
-            XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->client);
+            XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->client);*/
             window__draw_decorations(
                 ((client_t*) evec__at(&client_frame_map, i)), 
                 dpy
