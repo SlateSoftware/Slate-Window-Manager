@@ -40,7 +40,7 @@ void window__draw_decorations(client_t* c, Display* dpy)
 
     // Draw window title text*/
     cairo_set_source_rgb(c->cr, 1, 1, 1);
-    cairo_select_font_face(c->cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_select_font_face(c->cr, "@cairo:", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(c->cr, 14);
     cairo_move_to(c->cr, BORDER_WIDTH + 5, TITLEBAR_HEIGHT - 5);
 
@@ -68,6 +68,7 @@ void window__draw_decorations(client_t* c, Display* dpy)
     }
     
     cairo_show_text(c->cr, name);
+    free(name);
     // Draw close button (red square)
     cairo_rectangle(c->cr, w - CLOSE_WIDTH, 5, 16, 16);
     cairo_set_source_rgba(c->cr, 0.8, 0, 0, 1);

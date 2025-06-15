@@ -88,6 +88,9 @@ int main(void)
             }
             case ButtonPress:
             {
+                if (ev.xbutton.button == Button2 && ev.xbutton.state & Mod1Mask)
+                    goto end;
+
                 if (ev.xbutton.window != None && ev.xbutton.subwindow == None && ev.xbutton.button == Button1 /*&& (ev.xbutton.state & Mod1Mask)*/)
                 {
                     logf("Retrieving at click");
@@ -186,6 +189,7 @@ int main(void)
                 break;
         }
     }
+    end:
     printf("quitting sdewm...");
     client__free_map();
     XCloseDisplay(display);

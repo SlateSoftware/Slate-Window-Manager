@@ -126,7 +126,8 @@ void client__create(Window window, Display* dpy, Window root)
         SubstructureRedirectMask | SubstructureNotifyMask |
         ButtonPressMask | ButtonReleaseMask | 
         PointerMotionMask | StructureNotifyMask | 
-        ExposureMask
+        ExposureMask | KeyPressMask |
+        KeyReleaseMask
     );
     
     XReparentWindow(dpy, window, frame, CORNER_RADIUS, CORNER_RADIUS + TITLEBAR_HEIGHT);
