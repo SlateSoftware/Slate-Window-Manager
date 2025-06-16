@@ -13,8 +13,10 @@ extern FILE* logstream;
 
 #ifdef DEBUG
     #define logf(fmt, ...) fprintf(logstream, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+    #define elogf(fmt, ...) fprintf(logstream, fmt "\n", ##__VA_ARGS__); fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #else
     #define logf(fmt, ...)
+    #define elogf(fmt, ...)
 #endif
 
 

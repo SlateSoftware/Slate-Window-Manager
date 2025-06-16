@@ -6,6 +6,7 @@
 #include <intdef.h>
 #include "core.h"
 #include "client.h"
+#include "window.h"
 
 static bool wm_detecetd = false;
 
@@ -16,7 +17,7 @@ int wm_error_handler(Display* dpy, XErrorEvent* ev)
 
     char err[256];
     XGetErrorText(dpy, ev->error_code, err, sizeof(err));
-    fprintf(stderr, "X11 Error: %s (code %d)\n", err, ev->error_code);
+    elogf("[X11 error %d] %s", ev->error_code, err);
     return 0;
 }
 
@@ -51,10 +52,6 @@ int main(void)
     client__initialize_map();
     XEvent ev;
     client_t* current_window = NULL;
-    int win_x = 0;
-    int win_y = 0;
-    int frame_x = 0;
-    int frame_y = 0;
     while (true)
     {
         XNextEvent(display, &ev);
@@ -69,29 +66,30 @@ int main(void)
             case Expose:
             {
                 logf("Got Expose event");
-                client__redraw_all_decorations(display);
                 client_t* client = client__retrieve_from(ev.xexpose.window, false);
                 if (client)
                 {
-                    XWindowAttributes attr;
-                    XGetWindowAttributes(display, client->client, &attr);
-                    XClearArea(display, client->client, 0, 0, 0, 0, True);
-                    XConfigureEvent ce = {
-                        .type = ConfigureNotify,
-                        .display = display,
-                        .event = client->client,
-                        .window = client->client,
-                        .x = attr.y,
-                        .y = attr.x,
-                        .width = attr.width,
-                        .height = attr.height,
-                        .border_width = 0,
-                        .above = None,
-                        .override_redirect = False
-                    };
-    
-                    XSendEvent(display, client->client, False, StructureNotifyMask, (XEvent*)&ce);
+                    if (!(client->state & IS_RESIZING_MASK)) 
+                        client__redraw_all_decorations(display);
                 }
+                
+                break;
+            }
+            case ConfigureRequest: 
+            {
+                XConfigureRequestEvent *e = &ev.xconfigurerequest;
+
+                XWindowChanges changes = {
+                    .x = e->x,
+                    .y = e->y,
+                    .width = e->width,
+                    .height = e->height,
+                    .border_width = e->border_width,
+                    .sibling = e->above,
+                    .stack_mode = e->detail
+                };
+
+                XConfigureWindow(display, e->window, e->value_mask, &changes);
                 break;
             }
             case ButtonPress:
@@ -107,19 +105,16 @@ int main(void)
                     {
                         XRaiseWindow(display, current_window->frame);
                         XSetInputFocus(display, current_window->client, RevertToPointerRoot, CurrentTime);
-                        if (!client__can_close(&ev, current_window, display))
+                        if (!client__can_close(&ev, current_window, display) && !client__can_resize(&ev, current_window, display))
                         {
                             //printf("win: %ld, frame: %ld\nevw: %ld, evsw: %ld, root: %ld\n", current_window->client, current_window->frame, ev.xbutton.window, ev.xbutton.subwindow, ev.xbutton.root);
-                            XWindowAttributes attr;
-                            XGetWindowAttributes(display, current_window->client, &attr);
-                            win_x = attr.x;
-                            win_y = attr.y;
-                            XGetWindowAttributes(display, current_window->frame, &attr);
-                            frame_x = attr.x;
-                            frame_y = attr.y;
+                            //XWindowAttributes attr;
+                            //XGetWindowAttributes(display, current_window->frame, &attr);
+                            //current_window->frame_x = attr.x;
+                            //current_window->frame_y = attr.y;
                             current_window->drag_x = ev.xbutton.x_root;
                             current_window->drag_y = ev.xbutton.y_root;
-                            current_window->moving = 1;
+                            current_window->state |= MOVE_MASK;
                             client__redraw_all_decorations(display);
                         }
                     }
@@ -138,12 +133,16 @@ int main(void)
             }
             case MotionNotify:
             {
-                if (current_window != NULL && current_window->moving)
+                if (current_window != NULL && (current_window->state & MOVE_MASK))
                 {
-                    XMoveWindow(display, current_window->client, win_x, win_y);
+                    //XMoveWindow(display, current_window->client, win_x, win_y);
                     int dx = ev.xmotion.x_root - current_window->drag_x;
                     int dy = ev.xmotion.y_root - current_window->drag_y;
-                    XMoveWindow(display, current_window->frame, frame_x + dx, frame_y + dy);
+                    XMoveWindow(display, current_window->frame, current_window->frame_x + dx, current_window->frame_y + dy);
+                }
+                else if (current_window != NULL && (current_window->state & IS_RESIZING_MASK))
+                {
+                    window__handle_resize_event(&ev, current_window, display);
                 }
                 break;
             }
@@ -175,11 +174,36 @@ int main(void)
             }
             case ButtonRelease:
             {
-                if (current_window && current_window->moving && ev.xbutton.button == Button1)
+                if (current_window && (current_window->state & MOVE_MASK) && ev.xbutton.button == Button1)
                 {
-                    current_window->moving = false;
+                    XWindowAttributes attr;
+                    XGetWindowAttributes(display, current_window->frame, &attr);
+                    current_window->state &= ~MOVE_MASK;
                     current_window->drag_x = 0;
                     current_window->drag_y = 0;
+                    current_window->frame_x = attr.x;
+                    current_window->frame_y = attr.y;
+                    current_window = NULL;
+                }
+                else if (current_window && (current_window->state & IS_RESIZING_MASK) && ev.xbutton.button == Button1)
+                {
+                    XWindowAttributes attr;
+                    XGetWindowAttributes(display, current_window->frame, &attr);
+                    current_window->state &= ~RESIZE_REGION_MASK;
+                    current_window->drag_x = 0;
+                    current_window->drag_y = 0;
+                    current_window->frame_x = attr.x;
+                    current_window->frame_y = attr.y;
+                    current_window->frame_w = attr.width;
+                    current_window->frame_h = attr.height;
+                    XGetWindowAttributes(display, current_window->client, &attr);
+                    current_window->client_w = attr.width;
+                    current_window->client_h = attr.height;
+                    cairo_surface_destroy(current_window->surface);
+                    cairo_destroy(current_window->cr);
+                    current_window->surface = client__get_cairo_surface(current_window->frame, display, current_window->frame_w, current_window->frame_h, NULL);
+                    current_window->cr = cairo_create(current_window->surface);
+                    window__draw_decorations(current_window, display, 0, 0);
                     current_window = NULL;
                 }
                 else

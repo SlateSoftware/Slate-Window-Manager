@@ -35,16 +35,7 @@ void client__forget(client_t* client)
 
 void client__store(client_t* client)
 {
-    client_t _client = {
-        .client = client->client,
-        .frame = client->frame,
-        .moving = 0,
-        .drag_x = 0,
-        .drag_y = 0,
-        .surface = client->surface,
-        .cr = client->cr
-    };
-    evec__push(&client_frame_map, &_client);
+    evec__push(&client_frame_map, client);
     return /*(client_t*)evec__at(&client_frame_map, client_frame_map.size-1)*/;
 }
 
@@ -91,6 +82,23 @@ Visual* get_argb_visual(Display* dpy)
     return DefaultVisual(dpy, DefaultScreen(dpy));
 }
 
+cairo_surface_t* client__get_cairo_surface(Drawable frame, Display* dpy, u32 w, u32 h, Visual* visual)
+{
+    Visual* _visual = visual;
+    
+    if (!_visual)
+        _visual = get_argb_visual(dpy);
+    
+    
+    cairo_surface_t* surface = cairo_xlib_surface_create(
+        dpy, 
+        frame, 
+        _visual, 
+        w,
+        h
+    );
+}
+
 void client__create(Window window, Display* dpy, Window root)
 {
     XWindowAttributes attr;
@@ -135,12 +143,12 @@ void client__create(Window window, Display* dpy, Window root)
     XMapWindow(dpy, window);
     XMapWindow(dpy, frame);
 
-    cairo_surface_t* surface = cairo_xlib_surface_create(
-        dpy, 
+    cairo_surface_t* surface = client__get_cairo_surface(
         frame, 
-        visual, 
+        dpy, 
         attr.width + CORNER_RADIUS * 2,
-        attr.height + CORNER_RADIUS * 2 + TITLEBAR_HEIGHT
+        attr.height + CORNER_RADIUS * 2 + TITLEBAR_HEIGHT,
+        visual 
     );
 
     cairo_t* cr = cairo_create(surface);
@@ -148,9 +156,20 @@ void client__create(Window window, Display* dpy, Window root)
     client_t client = {
         .client = window,
         .frame = frame,
+        .frame_x = attr.x - CORNER_RADIUS,
+        .frame_y = attr.y - CORNER_RADIUS,
+        .frame_w = attr.width + CORNER_RADIUS * 2,
+        .frame_h = attr.height + CORNER_RADIUS * 2 + TITLEBAR_HEIGHT,
+        .client_w = attr.width,
+        .client_h = attr.height,
         .surface = surface,
         .cr = cr
     };
+
+    logf("client.frame_x = %u", client.frame_x);
+    logf("client.frame_y = %u", client.frame_y);
+    logf("client.frame_w = %u", client.frame_w);
+    logf("client.frame_h = %u", client.frame_h);
 
     client__store(&client);
     client__redraw_all_decorations(dpy);
@@ -169,7 +188,9 @@ void client__redraw_all_decorations(Display* dpy)
             XClearWindow(dpy, ((client_t*) evec__at(&client_frame_map, i))->client);*/
             window__draw_decorations(
                 ((client_t*) evec__at(&client_frame_map, i)), 
-                dpy
+                dpy,
+                0,
+                0
             );
         }
     }
@@ -180,11 +201,9 @@ bool client__can_close(XEvent* ev, client_t* client, Display* dpy)
     int click_x = ev->xbutton.x;
     int click_y = ev->xbutton.y;
 
-    XWindowAttributes attr;
-    XGetWindowAttributes(dpy, client->frame, &attr);
-    int w = attr.width;
+    int w = client->frame_w;
 
-    if (click_y < TITLEBAR_HEIGHT && click_x <= TITLEBAR_HEIGHT)
+    if (click_y < TITLEBAR_HEIGHT && click_x >= w - TITLEBAR_HEIGHT)
     { 
         Atom* protocols;
         int n;
@@ -219,4 +238,37 @@ bool client__can_close(XEvent* ev, client_t* client, Display* dpy)
     }
     else
         return false;
+}
+
+bool client__can_resize(XEvent* ev, client_t* client, Display* dpy)
+{   
+    int click_x = ev->xbutton.x;
+    int click_y = ev->xbutton.y;
+
+    int w = client->frame_w;
+    int h = client->frame_h;
+
+    if (
+        (click_x < TITLEBAR_HEIGHT && (click_y > h - TITLEBAR_HEIGHT && click_y < h)) ||
+        (click_x > w - TITLEBAR_HEIGHT && (click_y > h - TITLEBAR_HEIGHT && click_y < h)) ||
+        (click_x > w - TITLEBAR_HEIGHT && (click_y > TITLEBAR_HEIGHT && click_y < TITLEBAR_HEIGHT + CORNER_RADIUS)) ||
+        (click_x < TITLEBAR_HEIGHT && (click_y > TITLEBAR_HEIGHT && click_y < TITLEBAR_HEIGHT + CORNER_RADIUS))
+    )
+    {
+        client->drag_x = ev->xbutton.x_root;
+        client->drag_y = ev->xbutton.y_root;
+        client->state |= IS_RESIZING_MASK;
+        client->state &= ~(RESIZE_REGION_MASK & ~IS_RESIZING_MASK);
+        client->state |= (
+            (click_x > w - TITLEBAR_HEIGHT && (click_y > h - TITLEBAR_HEIGHT && click_y < h)) ?
+                BOTTOM_RIGHT_RESIZE_MASK
+            : (click_x > w - TITLEBAR_HEIGHT && (click_y > TITLEBAR_HEIGHT && click_y < TITLEBAR_HEIGHT + CORNER_RADIUS)) ?
+                TOP_RIGHT_RESIZE_MASK
+            : (click_x < TITLEBAR_HEIGHT && (click_y > TITLEBAR_HEIGHT && click_y < TITLEBAR_HEIGHT + CORNER_RADIUS)) ?
+                TOP_LEFT_RESIZE_MASK
+            :0
+        );
+        return true;
+    }
+    return false;
 }

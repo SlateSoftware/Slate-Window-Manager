@@ -9,6 +9,7 @@
 #define BORDER_WIDTH 20
 #define CLOSE_WIDTH 20
 
-void window__draw_decorations(client_t* c, Display* dpy);
+void window__draw_decorations(client_t* c, Display* dpy, int w, int h);
+void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy);
 
 #endif
