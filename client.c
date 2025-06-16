@@ -240,7 +240,7 @@ bool client__can_close(XEvent* ev, client_t* client, Display* dpy)
         return false;
 }
 
-bool client__can_resize(XEvent* ev, client_t* client, Display* dpy)
+bool client__can_resize(XEvent* ev, client_t* client, Display* dpy, bool* is_resizing)
 {   
     int click_x = ev->xbutton.x;
     int click_y = ev->xbutton.y;
@@ -257,7 +257,7 @@ bool client__can_resize(XEvent* ev, client_t* client, Display* dpy)
     {
         client->drag_x = ev->xbutton.x_root;
         client->drag_y = ev->xbutton.y_root;
-        client->state |= IS_RESIZING_MASK;
+        client->state |= IS_RESIZING_MASK; //TODO: replace with top level bool
         client->state &= ~(RESIZE_REGION_MASK & ~IS_RESIZING_MASK);
         client->state |= (
             (click_x > w - TITLEBAR_HEIGHT && (click_y > h - TITLEBAR_HEIGHT && click_y < h)) ?
@@ -268,7 +268,9 @@ bool client__can_resize(XEvent* ev, client_t* client, Display* dpy)
                 TOP_LEFT_RESIZE_MASK
             :0
         );
+        *is_resizing = true;
         return true;
     }
+    *is_resizing = false;
     return false;
 }

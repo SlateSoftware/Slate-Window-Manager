@@ -52,6 +52,7 @@ int main(void)
     client__initialize_map();
     XEvent ev;
     client_t* current_window = NULL;
+    bool is_resizing = false;
     while (true)
     {
         XNextEvent(display, &ev);
@@ -66,12 +67,8 @@ int main(void)
             case Expose:
             {
                 logf("Got Expose event");
-                client_t* client = client__retrieve_from(ev.xexpose.window, false);
-                if (client)
-                {
-                    if (!(client->state & IS_RESIZING_MASK)) 
-                        client__redraw_all_decorations(display);
-                }
+                if (!is_resizing)
+                    client__redraw_all_decorations(display);
                 
                 break;
             }
@@ -105,7 +102,7 @@ int main(void)
                     {
                         XRaiseWindow(display, current_window->frame);
                         XSetInputFocus(display, current_window->client, RevertToPointerRoot, CurrentTime);
-                        if (!client__can_close(&ev, current_window, display) && !client__can_resize(&ev, current_window, display))
+                        if (!client__can_close(&ev, current_window, display) && !client__can_resize(&ev, current_window, display, &is_resizing))
                         {
                             //printf("win: %ld, frame: %ld\nevw: %ld, evsw: %ld, root: %ld\n", current_window->client, current_window->frame, ev.xbutton.window, ev.xbutton.subwindow, ev.xbutton.root);
                             //XWindowAttributes attr;
@@ -140,7 +137,7 @@ int main(void)
                     int dy = ev.xmotion.y_root - current_window->drag_y;
                     XMoveWindow(display, current_window->frame, current_window->frame_x + dx, current_window->frame_y + dy);
                 }
-                else if (current_window != NULL && (current_window->state & IS_RESIZING_MASK))
+                else if (current_window != NULL && is_resizing)
                 {
                     window__handle_resize_event(&ev, current_window, display);
                 }
@@ -185,7 +182,7 @@ int main(void)
                     current_window->frame_y = attr.y;
                     current_window = NULL;
                 }
-                else if (current_window && (current_window->state & IS_RESIZING_MASK) && ev.xbutton.button == Button1)
+                else if (current_window && is_resizing && ev.xbutton.button == Button1)
                 {
                     XWindowAttributes attr;
                     XGetWindowAttributes(display, current_window->frame, &attr);
@@ -204,6 +201,7 @@ int main(void)
                     current_window->surface = client__get_cairo_surface(current_window->frame, display, current_window->frame_w, current_window->frame_h, NULL);
                     current_window->cr = cairo_create(current_window->surface);
                     window__draw_decorations(current_window, display, 0, 0);
+                    is_resizing = false;
                     current_window = NULL;
                 }
                 else
@@ -224,7 +222,6 @@ int main(void)
     end:
     printf("quitting sdewm...");
     client__free_map();
-    logf("Quitting SDEWM");
     core__close_log_stream();
     XCloseDisplay(display);
     printf("done\n");

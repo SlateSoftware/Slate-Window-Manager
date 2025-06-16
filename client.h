@@ -38,7 +38,7 @@ client_t* client__retrieve_from(Window window, bool frame);
 void client__redraw_all_decorations(Display* dpy);
 void client__create(Window window, Display* dpy, Window root);
 bool client__can_close(XEvent* ev, client_t* client, Display* dpy);
-bool client__can_resize(XEvent* ev, client_t* client, Display* dpy);
+bool client__can_resize(XEvent* ev, client_t* client, Display* dpy, bool* is_resizing);
 cairo_surface_t* client__get_cairo_surface(Drawable frame, Display* dpy, u32 w, u32 h, Visual* visual);
 
 #endif

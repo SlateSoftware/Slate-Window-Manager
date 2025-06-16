@@ -17,5 +17,6 @@ bool core__init_log_stream(void)
 
 void core__close_log_stream(void)
 {
+    fprintf(logstream, "== Quitting SDEWM ==\n");
     fclose(logstream);
 }
