@@ -49,8 +49,8 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     }
     logf("w = %d", w);
     logf("h = %d", h);
-    logf("_w = %d", _h);
-    logf("_h = %d", _w);
+    logf("_w = %d", _w);
+    logf("_h = %d", _h);
     cairo_save(c->cr);
     cairo_set_operator(c->cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(c->cr, 0, 0, 0, 0);
@@ -102,7 +102,6 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
     }
 
-    free(c->name);
     cairo_rectangle(c->cr, _w - CLOSE_WIDTH, 5, 16, 16);
     cairo_set_source_rgba(c->cr, 0.8, 0, 0, 1);
     cairo_fill(c->cr);
