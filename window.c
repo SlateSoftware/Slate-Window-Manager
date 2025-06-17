@@ -8,7 +8,37 @@
 #include "window.h"
 #include "client.h"
 
-void window__draw_decorations(client_t* c, Display* dpy, int w, int h)
+const int MIN_WIDTH = 100;
+const int MIN_HEIGHT = 50;
+
+char* window__get_name(Window client, Display* dpy)
+{
+    XTextProperty prop;
+    char* name = strdup("No title");
+    int count = 0;
+    char** list = NULL;
+    if (XGetWMName(dpy, client, &prop) && prop.value)
+    {
+        if (prop.encoding == XA_STRING)
+        {
+            free(name);
+            name = strdup((char*)prop.value);
+        }
+        
+        else if (XmbTextPropertyToTextList(dpy, &prop, &list, &count) >= Success && count > 0)
+        {
+            free(name);
+            name = strdup(list[0]);
+            XFreeStringList(list);
+            list = NULL;
+        }
+
+        XFree(prop.value);
+    }
+    return name;
+}
+
+void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool update_title)
 {
     int _h = h;
     int _w = w;
@@ -58,29 +88,11 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h)
     if (status != CAIRO_STATUS_SUCCESS)
     {
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
-    }
-
-    XTextProperty prop;
-    char* name = strdup("No title");
-    int count = 0;
-    char** list = NULL;
-    if (XGetWMName(dpy, c->client, &prop) && prop.value)
+    }*/
+    if (update_title)
     {
-        if (prop.encoding == XA_STRING)
-        {
-            free(name);
-            name = strdup((char *)prop.value);
-        }
-        
-        else if (XmbTextPropertyToTextList(dpy, &prop, &list, &count) >= Success && count > 0)
-        {
-            free(name);
-            name = strdup(list[0]);
-            XFreeStringList(list);
-            list = NULL;
-        }
-
-        XFree(prop.value);
+        free(c->name);
+        c->name = window__get_name(c->client, dpy);
     }
     
     cairo_show_text(c->cr, name);
@@ -116,8 +128,6 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h)
 
 void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
 {
-    const int MIN_WIDTH = 100;
-    const int MIN_HEIGHT = 50;
     int dx = ev->xmotion.x_root - c->drag_x;
     int dy = ev->xmotion.y_root - c->drag_y;
     switch (c->state & (RESIZE_REGION_MASK & ~IS_RESIZING_MASK))
@@ -131,7 +141,7 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w - dx, c->frame_h + dy, NULL);
             c->cr = cairo_create(c->surface);
-            window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h + dy);
+            window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h + dy, false);
             return;
         }
         case BOTTOM_RIGHT_RESIZE_MASK:
@@ -143,7 +153,7 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w + dx, c->frame_h + dy, NULL);
             c->cr = cairo_create(c->surface);
-            window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h + dy);
+            window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h + dy, false);
             return;
         }
         case TOP_RIGHT_RESIZE_MASK:
@@ -155,7 +165,7 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w + dx, c->frame_h - dy, NULL);
             c->cr = cairo_create(c->surface);
-            window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h - dy);
+            window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h - dy, false);
             return;
         }
         case TOP_LEFT_RESIZE_MASK:
@@ -167,7 +177,7 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w - dx, c->frame_h - dy, NULL);
             c->cr = cairo_create(c->surface);
-            window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h - dy);
+            window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h - dy, false);
             return;
         }
     }

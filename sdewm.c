@@ -200,7 +200,7 @@ int main(void)
                     cairo_destroy(current_window->cr);
                     current_window->surface = client__get_cairo_surface(current_window->frame, display, current_window->frame_w, current_window->frame_h, NULL);
                     current_window->cr = cairo_create(current_window->surface);
-                    window__draw_decorations(current_window, display, 0, 0);
+                    window__draw_decorations(current_window, display, 0, 0, true);
                     is_resizing = false;
                     current_window = NULL;
                 }

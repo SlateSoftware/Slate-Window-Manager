@@ -143,6 +143,8 @@ void client__create(Window window, Display* dpy, Window root)
     XMapWindow(dpy, window);
     XMapWindow(dpy, frame);
 
+    char* name = window__get_name(window, dpy);
+
     cairo_surface_t* surface = client__get_cairo_surface(
         frame, 
         dpy, 
@@ -163,7 +165,8 @@ void client__create(Window window, Display* dpy, Window root)
         .client_w = attr.width,
         .client_h = attr.height,
         .surface = surface,
-        .cr = cr
+        .cr = cr,
+        .name = name
     };
 
     logf("client.frame_x = %u", client.frame_x);
@@ -190,7 +193,8 @@ void client__redraw_all_decorations(Display* dpy)
                 ((client_t*) evec__at(&client_frame_map, i)), 
                 dpy,
                 0,
-                0
+                0,
+                true
             );
         }
     }
