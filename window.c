@@ -4,6 +4,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "core.h"
 #include "window.h"
 #include "client.h"
@@ -51,7 +52,7 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     logf("h = %d", h);
     logf("_w = %d", _w);
     logf("_h = %d", _h);
-    
+
     if (_w < 0 || _h < 0)
         return;
 
@@ -140,10 +141,10 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             if (c->frame_w - dx < MIN_WIDTH || c->frame_h + dy < MIN_WIDTH) return;
             XMoveResizeWindow(dpy, c->frame, c->frame_x + dx, c->frame_y, c->frame_w - dx, c->frame_h + dy);
             XResizeWindow(dpy, c->client, c->client_w - dx, c->client_h + dy);
-            cairo_surface_destroy(c->surface);
+            /*cairo_surface_destroy(c->surface);
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w - dx, c->frame_h + dy, NULL);
-            c->cr = cairo_create(c->surface);
+            c->cr = cairo_create(c->surface);*/
             window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h + dy, false);
             return;
         }
@@ -152,10 +153,10 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             if (c->frame_w + dx < MIN_WIDTH || c->frame_h + dy < MIN_WIDTH) return;
             XResizeWindow(dpy, c->frame, c->frame_w + dx, c->frame_h + dy);
             XResizeWindow(dpy, c->client, c->client_w + dx, c->client_h + dy);
-            cairo_surface_destroy(c->surface);
+            /*cairo_surface_destroy(c->surface);
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w + dx, c->frame_h + dy, NULL);
-            c->cr = cairo_create(c->surface);
+            c->cr = cairo_create(c->surface);*/
             window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h + dy, false);
             return;
         }
@@ -164,10 +165,10 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             if (c->frame_w + dx < MIN_WIDTH || c->frame_h - dy < MIN_WIDTH) return;
             XMoveResizeWindow(dpy, c->frame, c->frame_x, c->frame_y + dy, c->frame_w + dx, c->frame_h - dy);
             XResizeWindow(dpy, c->client, c->client_w + dx, c->client_h - dy);
-            cairo_surface_destroy(c->surface);
+            /*cairo_surface_destroy(c->surface);
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w + dx, c->frame_h - dy, NULL);
-            c->cr = cairo_create(c->surface);
+            c->cr = cairo_create(c->surface);*/
             window__draw_decorations(c, dpy, c->frame_w + dx, c->frame_h - dy, false);
             return;
         }
@@ -176,13 +177,14 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
             if (c->frame_w - dx < MIN_WIDTH || c->frame_h - dy < MIN_WIDTH) return;
             XMoveResizeWindow(dpy, c->frame, c->frame_x + dx, c->frame_y + dy, c->frame_w - dx, c->frame_h - dy);
             XResizeWindow(dpy, c->client, c->client_w - dx, c->client_h - dy);
-            cairo_surface_destroy(c->surface);
+            /*cairo_surface_destroy(c->surface);
             cairo_destroy(c->cr);
             c->surface = client__get_cairo_surface(c->frame, dpy, c->frame_w - dx, c->frame_h - dy, NULL);
-            c->cr = cairo_create(c->surface);
+            c->cr = cairo_create(c->surface);*/
             window__draw_decorations(c, dpy, c->frame_w - dx, c->frame_h - dy, false);
             return;
         }
     }
+    usleep(16000);
     return;
 }
