@@ -29,6 +29,7 @@ void client__forget(client_t* client)
 {
     cairo_destroy(client->cr);
     cairo_surface_destroy(client->surface);
+    free(client->name);
     memset(client, 0, sizeof(client_t));
     return;
 }
@@ -144,12 +145,12 @@ void client__create(Window window, Display* dpy, Window root)
     XMapWindow(dpy, frame);
 
     char* name = window__get_name(window, dpy);
-
+    
     cairo_surface_t* surface = client__get_cairo_surface(
         frame, 
         dpy, 
-        attr.width + CORNER_RADIUS * 2,
-        attr.height + CORNER_RADIUS * 2 + TITLEBAR_HEIGHT,
+        XDisplayWidth(dpy, DefaultScreen(dpy)),
+        XDisplayWidth(dpy, DefaultScreen(dpy)),
         visual 
     );
 
