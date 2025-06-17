@@ -51,6 +51,10 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     logf("h = %d", h);
     logf("_w = %d", _w);
     logf("_h = %d", _h);
+    
+    if (_w < 0 || _h < 0)
+        return;
+
     cairo_save(c->cr);
     cairo_set_operator(c->cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(c->cr, 0, 0, 0, 0);
