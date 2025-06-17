@@ -90,7 +90,7 @@ cairo_surface_t* client__get_cairo_surface(Drawable frame, Display* dpy, u32 w, 
         _visual = get_argb_visual(dpy);
     
     
-    cairo_surface_t* surface = cairo_xlib_surface_create(
+    return cairo_xlib_surface_create(
         dpy, 
         frame, 
         _visual, 
