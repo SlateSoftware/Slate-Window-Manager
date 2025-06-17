@@ -13,7 +13,10 @@ static bool wm_detecetd = false;
 int wm_error_handler(Display* dpy, XErrorEvent* ev)
 {
     if (ev->error_code == BadAccess)
+    {
         wm_detecetd = true;
+        return 0;
+    }
 
     char err[256];
     XGetErrorText(dpy, ev->error_code, err, sizeof(err));
@@ -34,14 +37,14 @@ int main(void)
     Cursor default_cursor = XCreateFontCursor(display, XC_left_ptr);
     XDefineCursor(display, root, default_cursor);
     XSetErrorHandler(wm_error_handler);
-    XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask | ExposureMask);
+    XSelectInput(display, root, SubstructureRedirectMask | SubstructureNotifyMask);
     XSync(display, false);
     if (wm_detecetd)
     {
         fprintf(stderr, "error: another window manager is already running\n");
         return EXIT_FAILURE;
     }
-    printf("sdewm: running\n");
+    printf("sdewm: running\ndisplay_width = %d\ndisplay_height = %d\n", XDisplayWidth(display, DefaultScreen(display)), XDisplayHeight(display, DefaultScreen(display)));
     if (!core__init_log_stream())
     {
         fprintf(stderr, "error: could not initialize log file, quitting\n");
