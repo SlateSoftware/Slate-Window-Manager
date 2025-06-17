@@ -88,21 +88,21 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     if (status != CAIRO_STATUS_SUCCESS)
     {
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
-    }*/
+    }
     if (update_title)
     {
         free(c->name);
         c->name = window__get_name(c->client, dpy);
     }
     
-    cairo_show_text(c->cr, name);
+    cairo_show_text(c->cr, c->name);
     status = cairo_status(c->cr);
     if (status != CAIRO_STATUS_SUCCESS)
     {
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
     }
 
-    free(name);
+    free(c->name);
     cairo_rectangle(c->cr, _w - CLOSE_WIDTH, 5, 16, 16);
     cairo_set_source_rgba(c->cr, 0.8, 0, 0, 1);
     cairo_fill(c->cr);
