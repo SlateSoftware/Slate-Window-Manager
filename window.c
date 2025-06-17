@@ -69,6 +69,15 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     cairo_arc(c->cr, CORNER_RADIUS, CORNER_RADIUS+TITLEBAR_HEIGHT, CORNER_RADIUS, 180*(3.14/180), 270*(3.14/180));
     cairo_close_path(c->cr);
     cairo_fill(c->cr);
+    /*cairo_rectangle(c->cr, CORNER_RADIUS, TITLEBAR_HEIGHT, _w - CORNER_RADIUS * 2, CORNER_RADIUS);
+    cairo_fill(c->cr);
+    cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT+CORNER_RADIUS+_h, _w - CORNER_RADIUS * 2, CORNER_RADIUS);
+    cairo_fill(c->cr);*/
+    /*cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT+CORNER_RADIUS, CORNER_RADIUS, _h);
+    cairo_fill(c->cr);
+    cairo_rectangle(c->cr, _w+CORNER_RADIUS, TITLEBAR_HEIGHT+CORNER_RADIUS, CORNER_RADIUS, _h);
+    cairo_fill(c->cr);*/
+
 
     /*cairo_set_source_rgba(c->cr, 0, 0, 0, 0.7);
     cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT, _w, _h);

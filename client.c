@@ -114,7 +114,7 @@ void client__create(Window window, Display* dpy, Window root)
     sattr.colormap = colormap;
     sattr.background_pixel = 0;
     sattr.border_pixel = 0;
-    sattr.override_redirect = false;
+    sattr.override_redirect = true;
 
     Window frame = XCreateWindow(
         dpy,
@@ -127,7 +127,7 @@ void client__create(Window window, Display* dpy, Window root)
         depth,
         InputOutput,
         visual,
-        CWColormap | CWBackPixel | CWBorderPixel,
+        CWColormap | CWBackPixel | CWBorderPixel | CWOverrideRedirect,
         &sattr
     );
     
