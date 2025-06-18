@@ -102,7 +102,7 @@ void* evec__at(evec_t* evec, u16 index)
         
         else
         {
-            fprintf(stderr, "evec: attempt to read out of range\n");
+            fprintf(stderr, "evec: an error occurred after evec__at(): attempt to read out of range\n");
             evec__free(evec);
             exit(EXIT_FAILURE);
         }

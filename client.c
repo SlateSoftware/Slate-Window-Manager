@@ -31,6 +31,11 @@ void client__forget(client_t* client)
     cairo_surface_destroy(client->surface);
     free(client->name);
     memset(client, 0, sizeof(client_t));
+    u16 client_place = ((((u8*)(client)) - client_frame_map.data)/sizeof(client_t))+1;
+    if (client_place < client_frame_map.size)
+        memmove(client, client+1, (client_frame_map.size - client_place)*sizeof(client_t));
+    
+    --client_frame_map.size;
     return;
 }
 
