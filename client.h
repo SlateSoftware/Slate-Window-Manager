@@ -21,6 +21,7 @@ typedef struct _client
     cairo_surface_t* surface;
     cairo_t* cr;
     char* name;
+    u32* icon;
 } client_t;
 
 #define MOVE_MASK (1 << 7)

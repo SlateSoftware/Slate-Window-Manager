@@ -30,6 +30,7 @@ void client__forget(client_t* client)
     cairo_destroy(client->cr);
     cairo_surface_destroy(client->surface);
     free(client->name);
+    free(client->icon);
     memset(client, 0, sizeof(client_t));
     u16 client_place = ((((u8*)(client)) - client_frame_map.data)/sizeof(client_t))+1;
     if (client_place < client_frame_map.size)
@@ -151,6 +152,8 @@ void client__create(Window window, Display* dpy, Window root)
 
     char* name = window__get_name(window, dpy);
     
+    u32* icon = window__get_icon(window, dpy);
+
     cairo_surface_t* surface = client__get_cairo_surface(
         frame, 
         dpy, 
@@ -172,7 +175,8 @@ void client__create(Window window, Display* dpy, Window root)
         .client_h = attr.height,
         .surface = surface,
         .cr = cr,
-        .name = name
+        .name = name,
+        .icon = icon
     };
 
     logf("client.frame_x = %u", client.frame_x);

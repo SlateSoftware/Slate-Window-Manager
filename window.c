@@ -69,6 +69,8 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     cairo_arc(c->cr, CORNER_RADIUS, CORNER_RADIUS+TITLEBAR_HEIGHT, CORNER_RADIUS, 180*(3.14/180), 270*(3.14/180));
     cairo_close_path(c->cr);
     cairo_fill(c->cr);
+
+
     /*cairo_rectangle(c->cr, CORNER_RADIUS, TITLEBAR_HEIGHT, _w - CORNER_RADIUS * 2, CORNER_RADIUS);
     cairo_fill(c->cr);
     cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT+CORNER_RADIUS+_h, _w - CORNER_RADIUS * 2, CORNER_RADIUS);
@@ -77,17 +79,17 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     cairo_fill(c->cr);
     cairo_rectangle(c->cr, _w+CORNER_RADIUS, TITLEBAR_HEIGHT+CORNER_RADIUS, CORNER_RADIUS, _h);
     cairo_fill(c->cr);*/
-
-
+    
+    
     /*cairo_set_source_rgba(c->cr, 0, 0, 0, 0.7);
     cairo_rectangle(c->cr, 0, TITLEBAR_HEIGHT, _w, _h);
     cairo_set_line_width(c->cr, CORNER_RADIUS);
     cairo_stroke(c->cr);
-
+    
     cairo_rectangle(c->cr, 0, 0, _w, TITLEBAR_HEIGHT);
     cairo_set_source_rgba(c->cr, 0.1, 0.1, 0.3, 0.8);
     cairo_fill(c->cr);*/
-
+    
     cairo_set_source_rgb(c->cr, 1, 1, 1);
     cairo_select_font_face(c->cr, "DM Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_status_t status = cairo_status(c->cr);
@@ -95,7 +97,7 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     {
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
     }
-
+    
     cairo_set_font_size(c->cr, 14);
     cairo_move_to(c->cr, BORDER_WIDTH + 5, TITLEBAR_HEIGHT - 5);
     status = cairo_status(c->cr);
@@ -115,10 +117,35 @@ void window__draw_decorations(client_t* c, Display* dpy, int w, int h,  bool upd
     {
         elogf("[Cairo error %d] %s", status, cairo_status_to_string(status));
     }
-
+    
     cairo_rectangle(c->cr, _w - CLOSE_WIDTH, 5, 16, 16);
     cairo_set_source_rgba(c->cr, 0.8, 0, 0, 1);
     cairo_fill(c->cr);
+    printf("%p (%ux%u=%u)\n", c->icon, c->icon[0], c->icon[1], (c->icon[0] * c->icon[1]));
+    if (c->icon && (c->icon[0] * c->icon[1]) > 0)
+    {
+        u32 icon_width = c->icon[0];
+        u32 icon_height = c->icon[1];
+        cairo_surface_t* icon_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, icon_width, icon_height);
+        u32* surface_data = (u32*)cairo_image_surface_get_data(icon_surface);
+        memcpy(surface_data, &c->icon[2], icon_width * icon_height);
+        cairo_surface_mark_dirty(icon_surface);
+        cairo_save(c->cr);
+
+        /*const int icon_x = 4;
+        const int icon_y = 4;
+        const int icon_size = 100; *
+
+        /*cairo_translate(c->cr, icon_x, icon_y);
+
+        double sx = (double)icon_size / icon_width;
+        double sy = (double)icon_size / icon_height;
+        cairo_scale(c->cr, sx, sy);*/
+
+        cairo_set_source_surface(c->cr, icon_surface, 0, 0);
+        cairo_paint(c->cr);
+        cairo_surface_flush(icon_surface);
+    }
 
     cairo_restore(c->cr);
     cairo_surface_flush(c->surface);
@@ -196,4 +223,37 @@ void window__handle_resize_event(XEvent* ev, client_t* c, Display* dpy)
     }
     usleep(16000);
     return;
+}
+
+u32* window__get_icon(Window client, Display* dpy)
+{
+    Atom net_wm_icon = XInternAtom(dpy, "_NET_WM_ICON", false);
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    unsigned char* data = NULL;
+
+    if (XGetWindowProperty(
+            dpy, 
+            client, 
+            net_wm_icon, 
+            0, 
+            ~0L,
+            false, 
+            XA_CARDINAL,
+            &actual_type, 
+            &actual_format, 
+            &nitems, 
+            &bytes_after, 
+            &data
+        ) == Success
+    ) 
+    {
+        return (u32*)data;
+    }
+    else
+    {
+        elogf("[X11 error] Cannot retrieve icon for window %lu", client);
+        return NULL;
+    }
 }
